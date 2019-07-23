@@ -1,6 +1,6 @@
 {
   "name": "nginx-node-proxy",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "main": "src/server.js",
   "author": "Italo Izaac <italoiz.dev@gmail.com>",
   "license": "MIT",
