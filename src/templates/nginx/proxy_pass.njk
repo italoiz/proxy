@@ -1,0 +1,4 @@
+{% set IP = NetworkSettings.IPAddress %}
+{% set PORT = Env.VIRTUAL_PORT %}
+{% set PORT = ":" + PORT if PORT else "" %}
+    proxy_pass http://{{ IP + PORT }};

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import dot from 'dot-object';
 
 import docker from '../config/docker';
-import templateService from '../services/template';
+import nginxService from '../services/nginx';
 
 /**
  * @typedef {Object} EnvContainerInspectInfo
@@ -24,7 +24,7 @@ class ContainerEvents extends EventEmitter {
    */
   startListen() {
     this.on('start', this.$onStart.bind(this));
-    this.on('started', templateService.listener);
+    this.on('container_ready', nginxService.containerReadyListener);
   }
 
   /**
@@ -42,7 +42,7 @@ class ContainerEvents extends EventEmitter {
     const container = await docker.getContainer(containerId);
     const inspectInfo = await container.inspect().then(this.parseEnv);
 
-    this.emit('started', inspectInfo, container);
+    this.emit('container_ready', inspectInfo, container);
   }
 
   /**

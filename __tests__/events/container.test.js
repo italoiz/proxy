@@ -78,14 +78,14 @@ describe('Container | Events', () => {
     expect(container.inspect).toHaveBeenCalled();
   });
 
-  it('should to emit `started` event to listeners when $onStart method called', async () => {
+  it('should to emit `container_ready` event to listeners when $onStart method called', async () => {
     const spyEmit = jest.spyOn(containerEvents, 'emit');
 
     const Actor = { ID: 'd0e8a1033d7d' };
     await containerEvents.$onStart(Actor);
 
     expect(spyEmit).toHaveBeenCalledWith(
-      'started',
+      'container_ready',
       expect.objectContaining({
         Config: {
           Env: expect.objectContaining({ VAR1: 'value1' }),
