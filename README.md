@@ -22,8 +22,10 @@ The complete solution for create a automated proxy with nginx for docker contain
 First of all, you must create the proxy. With the command below, you create the proxy easily:
 
 ```bash
-$ docker container run --name proxy -p 80:80 -d italoiz/proxy
+$ docker container run --name proxy -p 80:80 -v /var/run/docker.sock:/app/docker.sock:ro -d italoiz/proxy
 ```
+
+_There is something very important happening here. You must pass the `-v /var/run/docker.sock:/app/docker.sock:ro` flag. This is what will allow node.js to listen for docker container creation events._
 
 ### 2. Be happy! Create your containers by passing environment variables:
 
