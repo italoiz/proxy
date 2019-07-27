@@ -1,46 +1,73 @@
 import { spawnSync } from 'child_process';
+import dot from 'dot-object';
+
+import templateService from './template';
 
 class NginxService {
   constructor() {
-    this.virtualHostTemplate = 'virtual-host';
     this.configPath = '/etc/nginx/conf.d';
+    this.containerReadyListener = this.containerReadyListener.bind(this);
   }
 
   /**
-   * Create virtual host file to nginx server. Default path is
-   * `/etc/nginx/conf.d/default.conf`.
+   * Listener `container_ready` event.
    *
-   * @param {import('../events/container').ContainerInspectInfo} containerInfo
-   * @param {import('./template').default} templateService
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo - The container inspect info.
+   * @param {import('dockerode').Container} container - The container object.
+   *
+   * @method
+   * @public
    *
    * @returns {void}
    */
-  createVirtualHosts(containerInfo, templateService) {
-    if (!this.isGenerateVirtualHostFile(containerInfo.Config.Env)) return;
+  containerReadyListener(containerInfo) {
+    if (!this.isProxiedContainer(containerInfo)) return;
 
-    const virtualHosts = this.getVirtualHosts(containerInfo);
-    const filename = `${this.configPath}/${virtualHosts[0]}.conf`;
-
-    const { Env } = containerInfo.Config;
-
-    templateService.write(this.virtualHostTemplate, filename, {
-      ...containerInfo,
-      Env,
-    });
+    // write template of virtual host.
+    this.writeVirtualHostTemplate(containerInfo);
 
     // restart nginx server
-    this.restart();
+    this.nginxRestart();
+  }
+
+  /**
+   * Write template file.
+   *
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo
+   *
+   * @return {void}
+   */
+  writeVirtualHostTemplate(containerInfo) {
+    const filename = this.getVirtualHostFilename(containerInfo);
+
+    // move `Config.Env` to root of object.
+    dot.move('Config.Env', 'Env', containerInfo);
+
+    templateService.write('nginx/server', filename, containerInfo);
+  }
+
+  /**
+   * Get virtual host filename.
+   *
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo
+   *
+   * @return {string}
+   */
+  getVirtualHostFilename(containerInfo) {
+    const [virtualHost] = this.getVirtualHosts(containerInfo);
+
+    return `${this.configPath}/${virtualHost}.conf`;
   }
 
   /**
    * Is generate virtual host file
    *
-   * @param {Object} envs - Environment variables.
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo
    *
    * @returns {boolean}
    */
-  isGenerateVirtualHostFile(envs) {
-    return Object.keys(envs).includes('VIRTUAL_HOST') && !!envs.VIRTUAL_HOST;
+  isProxiedContainer({ Config: { Env } }) {
+    return Object.keys(Env).includes('VIRTUAL_HOST') && !!Env.VIRTUAL_HOST;
   }
 
   /**
@@ -50,10 +77,8 @@ class NginxService {
    *
    * @returns {string[]}
    */
-  getVirtualHosts(containerInfo) {
-    return containerInfo.Config.Env.VIRTUAL_HOST.split(',').filter(
-      domain => !!domain
-    );
+  getVirtualHosts({ Config: { Env } }) {
+    return Env.VIRTUAL_HOST.split(',').filter(domain => !!domain);
   }
 
   /**
@@ -63,7 +88,7 @@ class NginxService {
    *
    * @returns {Boolean}
    */
-  version() {
+  nginxVersion() {
     try {
       const { error, stdout, status } = spawnSync('nginx', ['-v']);
 
@@ -82,8 +107,8 @@ class NginxService {
    *
    * @returns {void}
    */
-  restart() {
-    if (this.version() !== false) {
+  nginxRestart() {
+    if (this.nginxVersion() !== false) {
       try {
         const { error, status } = spawnSync('nginx', ['-s', 'reload']);
 

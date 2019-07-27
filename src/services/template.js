@@ -2,28 +2,10 @@ import path from 'path';
 import fs from 'fs';
 
 import nunjucks from '../config/nunjucks';
-import nginxService from './nginx';
 
 class TemplateService {
   constructor() {
     this.template = nunjucks;
-    this.listener = this.listener.bind(this);
-  }
-
-  /**
-   * Listener to container `started` event.
-   *
-   * @param {import('../events/container').ContainerInspectInfo} containerInfo - The container inspect info.
-   * @param {import('dockerode').Container} container - The container object.
-   *
-   * @method
-   * @public
-   *
-   * @returns {void}
-   */
-  async listener(containerInfo) {
-    // generate virual hosts file.
-    nginxService.createVirtualHosts(containerInfo, this);
   }
 
   /**
@@ -35,7 +17,7 @@ class TemplateService {
    * @returns {string}
    */
   render(templateName, context) {
-    return nunjucks.render(`${templateName}.njk`, context);
+    return this.template.render(`${templateName}.njk`, context);
   }
 
   /**

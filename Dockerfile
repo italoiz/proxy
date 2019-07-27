@@ -12,6 +12,9 @@ RUN yarn build
 
 FROM nginx:1.17.1
 
+ENV NODE_ENV=production
+ENV DOCKER_SOCK=/app/docker.sock
+
 RUN apt-get update \
   && apt-get install -y curl \
   && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
@@ -27,9 +30,6 @@ COPY --from=building /app/dist/ ./
 
 COPY package.json yarn.* ./
 RUN npm install --prod
-
-ENV NODE_ENV=production
-ENV DOCKER_SOCK=/app/docker.sock
 
 VOLUME /app/docker.sock
 
