@@ -1,0 +1,42 @@
+{% set hosts = Env.VIRTUAL_HOST.split(",") %}
+{% set existCerts = existsSync("/etc/letsencrypt/live/"+hosts[0]+"/") %}
+server {
+  listen {{ "443 ssl http2" if existCerts else "443" }};
+  listen [::]:{{ "443 ssl http2" if existCerts else "443" }};
+
+  {% if hosts.length %}
+  server_name {{ hosts | join(" ") | trim }};
+  {% endif %}
+
+  {% if existCerts %}
+  # ssl certificates
+  ssl_certificate /etc/letsencrypt/live/{{ hosts | first }}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{ hosts | first }}/privkey.pem;
+  ssl_trusted_certificate /etc/letsencrypt/live/{{ hosts | first }}/chain.pem;
+  {% endif %}
+
+  {#- secutiry config #}
+  {% include "nginx/security.njk" %}
+
+  {#- reverse proxy #}
+  {% include "nginx/proxy.njk" %}
+
+  {#- common config #}
+  {% include "nginx/common.njk" %}
+}
+
+server {
+  listen 80;
+  listen [::]:80;
+
+  {% if hosts.length %}
+  server_name {{ hosts | join(" ") | trim }};
+  {% endif %}
+
+  {% include "nginx/letsencrypt.njk" %}
+
+  {#- redirect to https #}
+  location / {
+    return 301 https://{{ hosts | first }}$request_uri;
+  }
+}

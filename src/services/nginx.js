@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 import dot from 'dot-object';
 
 import templateService from './template';
+import certbotService from './certbot';
 
 class NginxService {
   constructor() {
@@ -26,6 +27,9 @@ class NginxService {
     // write template of virtual host.
     this.writeVirtualHostTemplate(containerInfo);
 
+    // certificates
+    this.generateSSLCertificates(containerInfo);
+
     // restart nginx server
     this.nginxRestart();
   }
@@ -41,7 +45,8 @@ class NginxService {
     const filename = this.getVirtualHostFilename(containerInfo);
 
     // move `Config.Env` to root of object.
-    dot.move('Config.Env', 'Env', containerInfo);
+    // dot.move('Config.Env', 'Env', containerInfo);
+    dot.copy('Config.Env', 'Env', containerInfo, containerInfo);
 
     templateService.write('nginx/server', filename, containerInfo);
   }
@@ -57,6 +62,38 @@ class NginxService {
     const [virtualHost] = this.getVirtualHosts(containerInfo);
 
     return `${this.configPath}/${virtualHost}.conf`;
+  }
+
+  /**
+   * Generate certificates
+   *
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo
+   *
+   * @return {void}
+   */
+  generateSSLCertificates(containerInfo) {
+    if (this.isSSL(containerInfo) && process.env.NODE_ENV === 'production') {
+      const domains = this.getVirtualHosts(containerInfo);
+      const email = process.env.NOTIFICATION_EMAIL || null;
+
+      try {
+        certbotService.generateCerts(domains, email);
+        this.writeVirtualHostTemplate(containerInfo);
+      } catch (err) {
+        // TODO: call error.
+      }
+    }
+  }
+
+  /**
+   * Is generate certificates
+   *
+   * @param {import('../events/container').ContainerInspectInfo} containerInfo
+   *
+   * @returns {boolean}
+   */
+  isSSL({ Config: { Env } }) {
+    return Object.keys(Env).includes('WITH_SSL') && Env.WITH_SSL === 'true';
   }
 
   /**
@@ -110,17 +147,18 @@ class NginxService {
   nginxRestart() {
     if (this.nginxVersion() !== false) {
       try {
-        const { error, status } = spawnSync('nginx', ['-s', 'reload']);
+        const { error, status, stderr } = spawnSync('nginx', ['-s', 'reload']);
 
         if (error || status !== 0) {
-          throw new Error('could not restart nginx');
+          const err = stderr || error.message;
+          throw new Error(err);
         }
       } catch (err) {
         process.stdout.write(err.message);
       }
     } else if (process.env.NODE_ENV === 'production') {
       process.stderr.write('nginx not found');
-      process.exit(126);
+      process.exit(1);
     }
   }
 }

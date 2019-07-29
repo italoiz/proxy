@@ -1,0 +1,17 @@
+server {
+  listen 80;
+  listen [::]:80;
+
+  {% if Env.VIRTUAL_HOST %}
+  server_name {{ Env.VIRTUAL_HOST.split(",") | join(" ") | trim }};
+  {% endif %}
+
+  {#- secutiry config #}
+  {% include "nginx/security.njk" %}
+
+  {#- reverse proxy #}
+  {% include "nginx/proxy.njk" %}
+
+  {#- common config #}
+  {% include "nginx/common.njk" %}
+}
