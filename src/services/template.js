@@ -17,7 +17,10 @@ class TemplateService {
    * @returns {string}
    */
   render(templateName, context) {
-    return this.template.render(`${templateName}.njk`, context);
+    return this.template.render(`${templateName}.njk`, {
+      ...context,
+      existsSync: fs.existsSync,
+    });
   }
 
   /**

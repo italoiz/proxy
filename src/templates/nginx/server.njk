@@ -1,17 +1,5 @@
-server {
-  listen 80;
-  listen [::]:80;
-
-  {% if Env.VIRTUAL_HOST %}
-  server_name {{ Env.VIRTUAL_HOST.split(",") | join(" ") | trim }};
-  {% endif %}
-
-  {#- secutiry config #}
-  {% include "nginx/security.njk" %}
-
-  {#- reverse proxy #}
-  {% include "nginx/proxy.njk" %}
-
-  {#- common config #}
-  {% include "nginx/common.njk" %}
-}
+{% if not Env.WITH_SSL or Env.WITH_SSL === 'false' %}
+{% include "nginx/server_nonssl.njk" %}
+{% elif Env.WITH_SSL and Env.WITH_SSL === 'true' %}
+{% include "nginx/server_ssl.njk" %}
+{% endif %}
