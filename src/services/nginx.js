@@ -74,11 +74,12 @@ class NginxService {
   generateSSLCertificates(containerInfo) {
     if (this.isSSL(containerInfo) && process.env.NODE_ENV === 'production') {
       const domains = this.getVirtualHosts(containerInfo);
-      const email = process.env.NOTIFICATION_EMAIL || null;
+      const email = process.env.DEFAULT_EMAIL || null;
 
       try {
         certbotService.generateCerts(domains, email);
         this.writeVirtualHostTemplate(containerInfo);
+        this.nginxRestart();
       } catch (err) {
         // TODO: call error.
       }
